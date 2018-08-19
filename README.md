@@ -1,2 +1,2 @@
 # Arm-Controller
-An wireless arm controller using WeMos Arduino board
+A wireless arm controller using WeMos Arduino board
