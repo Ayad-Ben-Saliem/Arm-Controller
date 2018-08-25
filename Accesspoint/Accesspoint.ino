@@ -8,9 +8,7 @@
 
 #include <ESP8266WiFi.h>
 
-byte ledPin = 11;
-
-char ssid[] = "WeMosD1AP";
+char ssid[] = "WIFI_AP";
 char pass[] = "123456789";
 
 WiFiServer server(80);
@@ -20,41 +18,34 @@ IPAddress mask = (255, 255, 255, 0);
 WiFiClient client;
 
 
-/*
- * NOTE: Four Servos of the Robotic Arm are connected to 4 PWM Pins of Arduino
- * and these 4 servos are named a, b, c and d.
+/* NOTE: Three Servo motors of the Robotic Arm are connected to 
+ * 3 PWM Pins of Arduino and these 3 servos are named a, b and c.
  * If you want to control servo a, then type "90a/",
  * where "90" is the PWM value (range is 0 - 255),
  * "a" means servo a and "/" is string parse delimiter.
- * Some other examples: 100a/ or 120b/ or 40c/ or 25d/
- */
-String readString;
-int x=90, y=90, p=90;
+ * Some other examples: 100a/ or 120b/ or 40c/
+*/
+
 #include <Servo.h>
-Servo myservoa, myservob, myservod;
 
 String message;
+int x=90, y=90, z=90;
 
+Servo servo_a, servo_b, servo_c;
+
+void moveServo(Servo &servo, int &currentAngle, int &oldAngle);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, pass);
   WiFi.softAPConfig(IP, IP, mask);
   server.begin();
-
-  //pinMode(ledPin, OUTPUT);
   
   Serial.println("\nServer started.");
   Serial.println("IP  : " + WiFi.softAPIP().toString());
   Serial.println("MAC : " + WiFi.softAPmacAddress());
-
-  myservoa.attach(3);
-  myservob.attach(5);
-  myservod.attach(9);
-  myservoa.write(x);
-  myservob.write(y);
-  myservod.write(p);
 
 
   do{
@@ -63,68 +54,65 @@ void setup() {
   Serial.println("Client @(" +
                   client.remoteIP().toString() +
                   ") has been connected.");
+
+  servo_a.attach(D3);
+  servo_b.attach(D4);
+  servo_c.attach(D5);
+  
+  servo_a.write(x);
+  servo_b.write(y);
+  servo_c.write(z);
 }
 
 void loop() {
-  if (client && client.available()){
-    char m = client.read();
-    if (m != '/') {
-      message += m;
+  while (!client)
+    client = server.available();
+
+  if(client.available()){
+    char c = client.read();
+    
+    if (c != '/') {
+      message += c;
     } else {
       if (message.length() > 1) {
-        Serial.println(message);
-        int temp = message.toInt();
-        Serial.printf("writing Angle: %d", temp);
         
-        if (message.indexOf('a') >= 0) {
-          if (temp > x) {
-            for (int i = x; i < temp; i++) {
-              myservoa.write(i);
-              delay(10);
-            }
-            x = temp;
-          } else {
-            for (int i=x; i>temp; i--) {
-              myservoa.write(i);
-              delay(30);
-            }
-          }
-          x = temp;
+        int currentAngle = message.toInt();
+        Serial.print("move to angle : ");
+        Serial.println(currentAngle);
+
+        if(message.endsWith("a")) {
+          Serial.println("Servo a");
+          moveServo(servo_a, currentAngle, x);
+        }else
+        if(message.endsWith("b")) {
+          Serial.println("Servo b");
+          moveServo(servo_b, currentAngle, y);
+        }else
+        if(message.endsWith("c")) {
+          Serial.println("Servo c");
+          moveServo(servo_c, currentAngle, z);
         }
-//////////////////////////////////////////////////////////////////////////////
-        if (message.indexOf('b') >= 0) {
-          if (temp>y) {
-            for (int i=y; i<temp; i++) {
-              myservob.write(i);
-              delay(10);
-            }
-            y = temp;
-          } else {
-            for (int i=y; i>temp; i--){
-              myservob.write(i);
-              delay(10);
-            }
-            y = temp;
-          }
-        }
-///////////////////////////////////////////////////////////////////////
-        if (message.indexOf('d') >= 0) {
-          if (temp > p) {
-            for (int i = p; i < temp; i++){
-              myservod.write(i);
-              delay(10);
-            }
-            p = temp;
-          } else {
-            for (int i = p; i > temp; i--){
-              myservod.write(i);
-              delay(30);
-            }
-          }
-          p = temp;
-        }
-        message = "";
+        
+        message="";
       }
     }
   }
+}
+
+void moveServo(Servo &servo, int &currentAngle, int &oldAngle){
+
+  Serial.printf("%d to %d\n",oldAngle, currentAngle);
+  
+  if (currentAngle > oldAngle) {
+    for (int i = oldAngle; i < currentAngle; i++) {
+      servo.write(i);
+      delay(10);
+    }
+  } else {
+    for (int i = oldAngle; i > currentAngle; i--) {
+      servo.write(i);
+      delay(10);
+    }
+  }
+  oldAngle = currentAngle;
 }

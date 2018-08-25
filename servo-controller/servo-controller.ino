@@ -1,91 +1,71 @@
-/*NOTE: Four Servos of the Robotic Arm are connected to 4 PWM Pins of Arduino
-and these 4 servos are named a, b, c and d.
-If you want to control servo a, then type "90a/",
-where "90" is the PWM value (range is 0 - 255),
-"a" means servo a and "/" is string parse delimiter.
-Some other examples: 100a/ or 120b/ or 40c/ or 25d/
+/* NOTE: Three Servo motors of the Robotic Arm are connected to 
+ * 3 PWM Pins of Arduino and these 3 servos are named a, b and c.
+ * If you want to control servo a, then type "90a/",
+ * where "90" is the PWM value (range is 0 - 255),
+ * "a" means servo a and "/" is string parse delimiter.
+ * Some other examples: 100a/ or 120b/ or 40c/
 */
 
 #include <Servo.h>
 
-String readString;
-int x=90, y=90, p=90;
+String message;
+int x=90, y=90, z=90;
 
-Servo myservoa, myservob, myservod;
+Servo servo_a, servo_b, servo_c;
+
+void moveServo(Servo &servo, int &currentAngle, int &oldAngle);
 
 void setup() {
   Serial.begin(9600);
-  myservoa.attach(3);
-  myservob.attach(5);
-  myservod.attach(9);
-  myservoa.write(x);
-  myservob.write(y);
-  myservod.write(p);
+  
+  servo_a.attach(3);
+  servo_b.attach(5);
+  servo_c.attach(9);
+  
+  servo_a.write(x);
+  servo_b.write(y);
+  servo_c.write(z);
 }
 
 void loop() {
   if (Serial.available()){
-    char m = Serial.read();
-    if (m == '/') {
-      if (readString.length() > 1) {
-        Serial.println(readString);
-        int temp = readString.toInt();
-        Serial.print("writing Angle: ");
-        Serial.println(temp);
-
-        if(readString.indexOf('a') >=0) {
-          if (temp>x) {
-            for (int i=x; i<temp; i++) {
-              myservoa.write(i);
-              delay(10);
-            }
-            x=temp;
-          } else {
-            for (int i=x; i>temp; i--) {
-              myservoa.write(i);
-              delay(30);
-            }
-          }
-          x=temp;
-        }
-
-        //////////////////////////////////////////////////////////////////////////////
-        if(readString.indexOf('b') >=0) {
-          if (temp>y) {
-            for (int i=y; i<temp; i++) {
-              myservob.write(i);
-              delay(10);
-            }
-            y=temp;
-          } else {
-            for (int i=y; i>temp; i--) {
-              myservob.write(i);
-              delay(10);
-            }
-            y=temp;
-          }
-        }
-
-        ///////////////////////////////////////////////////////////////////////
-        if(readString.indexOf('d') >=0) {
-          if (temp>p) {
-            for (int i=p; i<temp; i++) {
-              myservod.write(i);
-              delay(10);
-            }
-            p=temp;
-          } else {
-            for (int i=p; i>temp; i--) {
-              myservod.write(i);
-              delay(30);
-            }
-          }
-          p=temp;
-        }
-        readString="";
-      }
+    char c = Serial.read();
+    if (c != '/') {
+      message += c;
     } else {
-      readString += m;
+      if (message.length() > 1) {
+        
+        int currentAngle = message.toInt();
+        Serial.print("move to angle : ");
+        Serial.println(currentAngle);
+
+        if(message.endsWith("a")) {
+          moveServo(servo_a, currentAngle, x);
+        }else
+        if(message.endsWith("b")) {
+          moveServo(servo_a, currentAngle, y);
+        }else
+        if(message.endsWith("c")) {
+          moveServo(servo_a, currentAngle, z);
+        }
+        
+        message="";
+      }
     }
   }
+}
+
+void moveServo(Servo &servo, int &currentAngle, int &oldAngle){
+  if (currentAngle > oldAngle) {
+    for (int i = oldAngle; i < currentAngle; i++) {
+      servo.write(i);
+      delay(10);
+    }
+  } else {
+    for (int i = oldAngle; i < currentAngle; i--) {
+      servo.write(i);
+      delay(30);
+    }
+  }
+  oldAngle = currentAngle;
 }
